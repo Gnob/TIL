@@ -1,0 +1,4 @@
+= Effective Java
+Gnob <gnob244@gmail.com>
+
+스터디한 내용을 정리한다.

@@ -1,2 +1,4 @@
 = TIL
+Gnob <gnob244@gmail.com>
+
 Today I Learned
