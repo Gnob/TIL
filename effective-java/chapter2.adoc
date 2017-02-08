@@ -1,0 +1,31 @@
+= 2장 객체의 생성과 삭제
+Gnob <gnob244@gmail.com>
+
+== Enum
+2장 내용 중에 다음과 같은 내용이 있다.
+
+[quote, Effective Java 2판 26쪽]
+____
+원소가 하나뿐인 `enum` 자료형이야말로 싱글턴을 구현하는 가장 좋은 방법이다.
+____
+
+`Enum` type 자체가 Singleton인건 아니다. `Enum`은 객체가 아니라 Type이므로 문장이 틀렸다.
+정확하게는 #`Enum`에 정의되는 상수들은 언어 스펙에서 Single instance를 보장하기 때문#이다.
+즉 이를 활용하라는 뜻이다.
+
+아래 예제처럼 말이다.
+
+[source,java]
+----
+public enum BreakfastRepository {
+    INSTANCE; <1>
+
+    public void save() { ... }
+}
+----
+<1> 이것을 `Enum`의 `Constant`라고 부르고, `Constant`들은 Singleton이다.
+
+그리고 `Enum`은 Serialize와 Deserialize를 할 때 특별하게 다뤄지기 때문에 중복 인스턴스가 절대 발생하지 않는다. 리플렉션 또한 금지되어 있다.
+
+=== 참고 문서
+http://docs.oracle.com/javase/specs/jls/se7/html/jls-8.html#jls-8.9[Java Language Specification - Chapter 8.9 Enum]
