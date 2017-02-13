@@ -1,0 +1,228 @@
+= 3장 모든 객체의 공통 메서드
+Gnob <gnob244@gmail.com>
+
+== 개요
+자바에선 모든 객체들이 `Object`를 확장한다. Object에는 다음과 같은 non-`final` 메서드들이 있다.
+
+* equals
+* hashCode
+* toString
+* clone
+* finalize
+
+이 메서드들은 명시적인 *일반 규약*(general contract)를 가지고 있다.
+또한 이 메서드들은 `override`해서 사용하도록 설계되어있다.
+만약 메서드를 `override` 하는데 규약을 따르지 않으면 HashMap 같은 클래스와 함께 사용할 때 문제가 발생할 수 있다.
+HashMap은 해당 규약에 의존하기 때문이다.
+이번 장에서 이들을 언제, 어떻게 정의하면 좋을지 알아본다.
+
+
+== [규칙 8] equals를 재정의할 때는 일반 규약을 따르라
+=== 알아두기
+이 규칙에서 주의깊게 생각해야할 건 `equals` 메서드의 역할이다.
+`equals` 메서드는 주로 *논리적 동일성*을 비교하기 위해 사용된다.
+이에 대해선 `equals` 일반 규약에서 찾아볼 수 있다.
+(참고 - https://docs.oracle.com/javase/7/docs/api/java/lang/Object.html#equals(java.lang.Object)[Object 클래스 명세 중 equals 메소드 부분])
+
+모든 클래스들의 근간이 되는 Object 클래스는 `equals` 메소드를 아래와 같이 구현한다.
+
+[source,java]
+----
+public boolean equals(Object obj) {
+  return (this == obj);
+}
+----
+
+Object 클래스는 객체 동일성만을 비교하는데, 이는 Object 클래스 관점에선 각각의 객체가 고유하기 때문이다. (비교할만한 상태 값이 없다)
+따라서 하위 클래스에서 Object의 `equals` 메소드를 그냥 사용하게 될 경우 부가적인 논리적 동일성에 대한 보장을 못받는다.
+여기서 같이 알아두면 좋은 것은 == 연산자이다.
+(참고 - http://docs.oracle.com/javase/specs/jls/se7/html/jls-15.html#jls-15.21.3[Reference Equality Operators == and !=])
+
+=== 경우에 따라서는 equals 메서드를 재정의할 필요가 없다
+`equals` 메서드를 재정의 할땐 실수의 여지가 많다.
+아래와 같은 조건 중 하나만 만족되면 `equals` 메서드를 재정의하지 않는게 좋다.
+
+* 각각의 객체가 고유하다 (자기 자신하고만 같다)
+** 값(value) 대신 활성 개체(active entity)를 나타내는 경우
+*** ex) Thread 클래스
+
+* 클래스에 _논리적으로 동일한지_를 검사할 방법이 있어도 되고 없어도 경우
+** 논리적으로 동일한지를 검사하는건 객체의 상태를 비교하는 것이므로 비교시 객체를 상세히 알고 있어야 한다.
+
+* 상위 클래스에서 재정의한 `equals`가 하위 클래스에서 사용하기에 적당한 경우
+
+* 클래스가 private 또는 package-private으로 선언되어 있고, `equals` 메서드를 호출할 일이 없는 경우
+** 방어적 코딩 관점에선 실수로 호출할 경우에 대비해서 `equals`를 재정의 하는게 낫다.
+
+[source,java]
+----
+@Override
+public Boolean equals(Object o) {
+  throw new AssertionError(); <1>
+}
+----
+<1> 호출 되선 안되는 메서드를 호출했다는 뜻
+
+
+=== 논리적 동일성을 지원하는 클래스거나, 하위클래스에서 상위 클래스의 equals만으로는 부족할 때
+이럴 경우 `equals` 메서드를 재정의하는 것이 바람직하다.
+논리적 동일성을 지원한다는건 Integer, Date 같은 클래스를 예시가 있다.
+
+[source,java]
+----
+@Test
+public void testIntegerEquals() throws Exception {
+  Integer foo = new Integer(1);
+  Integer bar = new Integer(1);
+
+  assertThat(foo == bar, is(false)); <1>
+  assertThat(foo.equals(bar), is(true)); <2>
+}
+----
+<1> Reference 주소에 대한 비교를 하므로 `false`. 동일한 객체가 아니다.
+<2> Integer의 `equals` 구현은 일반 규약을 따른다. 논리적 동일성을 비교하므로 값을 비교하고, 결과는 `true`.
+
+==== 부연설명
+아래와 같이 Point 클래스를 정의했다고 해보자.
+
+[source,java]
+----
+public class BadPoint {
+	private int x, y;
+
+	public BadPoint(int x, int y) {
+		this.x = x;
+		this.y = y;
+  }
+
+  public int getX() {
+    return x;
+  }
+
+  public int getY() {
+    return y;
+  }
+
+  <1>
+}
+----
+<1> `equals` 메소드를 정의하지 않았다.
+
+두 점이 같은지 비교하고 싶다면 두 점의 좌표가 같아야 할 것이다.
+이런 논리적 동일성을 비교하기 위해선 *상위 클래스의 `equals` 메소드 만으로는 부족*하다.
+
+[source,java]
+----
+@Test
+public void shouldNotEqual() {
+  final int x = 1;
+  final int y = 2;
+
+  BadPoint pointA = new BadPoint(x, y);
+  BadPoint pointB = new BadPoint(x, y);
+
+  assertThat(pointA == pointB, is(false)); <1>
+  assertThat(pointA.equals(pointB), is(false)); <2>
+  assertThat(pointA.getX() == pointB.getX() && pointA.getY() == pointB.getY(), is(true)); <3>
+}
+----
+<1> Reference 주소에 대한 비교를 하므로 `false`. 동일한 객체가 아니다.
+<2> BadPoint 클래스는 `equals` 구현하지 않았으므로 Object 클래스의 `equals`가 호출된다. 논리적 동일성이 보장되지 않는다. 따라서 `false`
+<3> 우리는 두 점의 좌표 값이 같아야 한다는걸 알기 때문에 각 좌표 값을 비교해서 논리적 동일성을 알아볼 수 있다. 이 경우 `true`
+
+물론 `equals` 메소드를 구현하지 않고 3번처럼 클라이언트가 직접 값을 비교할 수도 있다.
+하지만 이
+
+
+=== IDE에서 지원하는 equals 메서드 자동 생성
+==== IntelliJ
+macOS를 기준으로, IntelliJ에서 `⌘(CMD) + N`을 누르면 아래와 같은 메뉴가 나온다.
+
+image::images/equals-1.png[]
+
+클래스에 대해 필요한 것들을 자동으로 만들어주는 `Generate` 메뉴로, 그 중에는 `equals`도 있다.
+`equals() and hashCode()`를 눌러보자
+
+image::images/equals-2.png[]
+
+해당 구문들을 생성할 때 추가적인 옵션을 줄 수 있다.
+
+* `Accept subclasses as parameter to equals() method`
+** `equals`는 parameter로 Object 클래스를 받지만, 하위 클래스로 받도록 재정의 할 수도 있다.
+** Type을 컴파일 타임에 강제할 수 있지만 책에서 언급된 것 처럼 복잡도 대비 효용엔 의문
+
+Template은 다음과 같이 있다.
+
+image::images/equals-3.png[]
+
+===== IntelliJ Default
+Template을 `IntelliJ Default`로 지정하면 아래와 같이 코드가 생성된다.
+
+[source,java]
+----
+public class Point {
+	private int x, y;
+
+	public Point(int x, int y) {
+		this.x = x;
+		this.y = y;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) <1>
+			return true;
+		if (o == null || getClass() != o.getClass()) <2>
+			return false;
+
+		Point point = (Point) o; <3>
+
+		if (x != point.x) <4>
+			return false;
+		return y == point.y;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = x;
+		result = 31 * result + y;
+		return result;
+	}
+}
+----
+<1> 반사성(reflexive)를 구현. 객체로써 자기 자신과 같은지 확인한다.
+<2> 참조가 `null`인지 확인하고, 같은 클래스인지를 확인한다. 이 부분엔 논쟁의 여지가 있다.
+<3> 위에서 같은 클래스인지를 확인했기 때문에, 캐스팅은 반드시 성공한다.
+<4> 논리적 동일성을 비교한다.
+
+
+===== java.util.Objects.equals and hashCode
+`java.util.Objects.equals and hashCode (java 7+)`로 지정하면 다음과 같다.
+
+[source,java]
+----
+public class Point {
+	private int x, y;
+
+	public Point(int x, int y) {
+		this.x = x;
+		this.y = y;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o)
+			return true;
+		if (o == null || getClass() != o.getClass())
+			return false;
+		Point point = (Point) o;
+		return x == point.x && y == point.y; <1>
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(x, y);
+	}
+}
+----
+<1> 사실상 IntelliJ Template과 같다.
