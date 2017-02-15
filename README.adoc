@@ -1,3 +1,6 @@
+:doctype: book
+:toc: left
+
 = TIL
 Gnob <gnob244@gmail.com>
 

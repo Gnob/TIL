@@ -1,4 +1,10 @@
+:doctype: book
+:toc: left
+
 = Effective Java
 Gnob <gnob244@gmail.com>
 
 스터디한 내용을 정리한다.
+
+include::chapter2.adoc[]
+include::chapter3.adoc[]
